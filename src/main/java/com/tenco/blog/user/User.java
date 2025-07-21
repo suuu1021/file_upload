@@ -24,6 +24,9 @@ public class User {
 
     private String password;
     private String email;
+
+    private String profileImagePath;
+
     // now() -> x
     // 엔티티가 영속화 될 때 자동으로 pc 현재시간을 설정해 준다
     @CreationTimestamp
