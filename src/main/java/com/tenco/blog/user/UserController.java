@@ -20,6 +20,7 @@ public class UserController {
 
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
+    private final ProfileUploadService profileUploadService;
 
     /**
      * 회원 정보 수정 화면 요청
@@ -27,8 +28,10 @@ public class UserController {
     @GetMapping("/user/update-form")
     public String updateForm(Model model, HttpSession session) {
 
-        User sessionUser = (User)session.getAttribute("sessionUser");
+        // 머스태치 파일에서 sessionUser 키값 출력하는 코드들 있음
+        User sessionUser = (User) session.getAttribute("sessionUser");
         User user = userService.findById(sessionUser.getId());
+        // 모델에서 관리하는 user 키값으로 머스태치에서 뿌려주고 있다.
         model.addAttribute("user", user);
         return "user/update-form";
     }
@@ -45,7 +48,7 @@ public class UserController {
         // 4. 세션 동기화 처리
         // 5. 리다이렉트 -> 회원 정보 화면 요청(새로운 request)
         reqDTO.validate();
-        User user = (User)session.getAttribute("sessionUser");
+        User user = (User) session.getAttribute("sessionUser");
         User updateUser = userService.updateById(user.getId(), reqDTO);
         session.setAttribute("sessionUser", updateUser);
         return "redirect:/user/update-form";
@@ -58,7 +61,6 @@ public class UserController {
     }
 
     /**
-     *
      * 회원 가입 기능 요청
      */
     @PostMapping("/join")
@@ -82,7 +84,7 @@ public class UserController {
     @PostMapping("/login")
     public String login(UserRequest.LoginDTO loginDTO, HttpSession session) {
         loginDTO.validate();
-        User user =  userService.login(loginDTO);
+        User user = userService.login(loginDTO);
         session.setAttribute(Define.SESSION_USER, user);
         return "redirect:/";
     }
@@ -94,17 +96,34 @@ public class UserController {
     }
 
     @PostMapping("user/upload-profile-image")
-    public String uploadProfileImage(@RequestParam(name = "profileImage")MultipartFile multipartFile,
-                                     HttpSession httpSession) {
-        // 업로드 로직 구현 시작
+    public String uploadProfileImage(@RequestParam(name = "profileImage") MultipartFile multipartFile,
+                                     HttpSession session) {
+        // 인증검사는 인터셉터에서 처리
+        User sessionUser = (User) session.getAttribute(Define.SESSION_USER);
+        // 파일 유효성 검사
+        UserRequest.ProfileImageDTO profileImageDTO = new UserRequest.ProfileImageDTO();
+        profileImageDTO.setProfileImage(multipartFile);
+        profileImageDTO.validate();
 
+        // 서비스에게 일 위임 (DB 저장 및 실제 파일 생성 까지)
+        User updateUser = userService.uploadProfileImage(sessionUser.getId(), multipartFile);
+
+        // 세션 값에 새로운 값을 재 갱신 해주어야 한다. (세션 재 갱신 처리)
+        session.setAttribute(Define.SESSION_USER, updateUser);
+
+        // 업로드 로직 구현 시작
         return "redirect:/user/update-form";
     }
 
     @PostMapping("user/delete-profile-image")
-    public String deleteProfileImage(HttpSession httpSession) {
+    public String deleteProfileImage(HttpSession session) {
 
-        // 파일 삭제 로직 시작
+        User sessionUser = (User) session.getAttribute(Define.SESSION_USER);
+        // DB 경로를 null 처리하고 실제 파일도 삭제 처리 함
+        User updateUser = userService.deleteProfileImage(sessionUser.getId());
+
+        // 세션 정보 업데이트 처리
+         session.setAttribute(Define.SESSION_USER, updateUser);
 
         return "redirect:/user/update-form";
     }
